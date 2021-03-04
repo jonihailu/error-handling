@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="3329e808-5193-4c8d-9fd0-acd81566ab56" basePath="/api/timezone">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="7e6ba077-3244-4181-b778-9b611ecae6be" basePath="/api" >
+		<http:request-connection host="worldtimeapi.org" />
+	</http:request-config>
+	<ftp:config name="FTP_Config" doc:name="FTP Config" doc:id="11dec962-b97a-47ea-823a-e873b0d854da" >
+		<ftp:connection workingDir="/mule" host="localhost" username="ftpmule" password="ftpmule" />
+	</ftp:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="7ab74027-0f51-481b-ac15-ce2c2fde1822" >
+		<salesforce:basic-connection username="Michaelmeseret@outlook.com" password="Muluken62" securityToken="5r4jWHnzKImQRn9JiYauxZQH" url="https://login.salesforce.com/services/Soap/u/49.0" />
+	</salesforce:sfdc-config>
+	<configuration doc:name="Configuration" doc:id="8fdbfc93-971e-4e94-b7bd-ba3a7ff295f2" defaultErrorHandler-ref="GlobalError_Handler" />
+	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="7feda901-b1d8-430f-9a7e-91e2141a7f0c" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<s3:config name="Amazon_S3_Configuration" doc:name="Amazon S3 Configuration" doc:id="7cc1c9da-b54c-4a8a-b2a3-3b7ac4d7d3af" >
+		<s3:basic-connection accessKey="AKIAJMYPJPNUKCPZWN4Q" secretKey="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" />
+	</s3:config>
+	<http:listener-config name="HTTP_Listener_config2" doc:name="HTTP Listener config" doc:id="b4d5e90c-a8de-4df9-80c4-cc5cdaeb6a54" >
+		<http:listener-connection host="0.0.0.0" port="8084" />
+	</http:listener-config>
+	<flow name="Flow1" doc:id="eba88f66-b2c2-46df-8860-0b223d40802d" >
+		<http:listener doc:name="Listener" doc:id="b0cc77b6-9e3d-482b-af9b-a0ff76e24dad" config-ref="HTTP_Listener_config" path="/{region}/{city}">
+			<http:response statusCode="#[vars.StatusCode]" reasonPhrase="#[vars.ReasonPhrase]" />
+			<http:error-response statusCode="#[vars.StatusCode]">
+				<http:body ><![CDATA[#[payload]]]></http:body>
+			</http:error-response>
+		</http:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="6b21c72b-9aee-49c9-aa50-84490f0ebd1e" message="#[(attributes.uriParams.region default '') ++ ' ' ++ (attributes.uriParams.city default '')]"/>
+		<http:request method="GET" doc:name="Request" doc:id="4ca3f61f-3ff0-4a07-aa9b-1f1515cf2293" config-ref="HTTP_Request_configuration" path="/{region}/{city}">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	city : attributes.uriParams.city,
+	region : attributes.uriParams.region
+}]]]></http:uri-params>
+		</http:request>
+	</flow>
+	<flow name="Flow2" doc:id="5cf1d5da-a40b-44da-85cc-e12c44b6a4fa" initialState="started">
+		<http:listener doc:name="Listener" doc:id="9146c407-ee40-41d1-bdc4-bda7c0e7f205" config-ref="HTTP_Listener_config1" path="/timezones" >
+			<http:error-response statusCode="#[vars.statusCode]" >
+				<http:body ><![CDATA[#[payload]]]></http:body>
+			</http:error-response>
+		</http:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="a9cd7765-5b5f-4077-8f5e-19096b6c69bb" message="#[payload]" />
+		<http:request method="GET" doc:name="Request" doc:id="4463d135-015c-4371-a228-f245f661fc81" config-ref="HTTP_Request_configuration" path="/timezone">
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="9eef111b-3169-4bf0-811c-537c5743ba28" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="78f2f7a0-3aaa-4bfe-9e36-0fd40a1f0e5a" message="privat flow  value:#[payload]"/>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="81670ad0-7403-4dd0-b78d-0362732b819c" >
+			<route >
+				<file:write doc:name="Write" doc:id="fa36f7c6-20b8-46ae-be54-d422426430c2" path="C:\Users\hailu\Desktop\File-Home\new-connector\Request-Records.txt" />
+				<logger level="INFO" doc:name="Logger" doc:id="945ad539-9628-4862-a76c-a6043b142e1e" message="Logger after Write File: #[payload]" />
+			</route>
+			<route >
+				<file:read doc:name="Read" doc:id="96ad0259-d598-4b21-8611-47e37e9da4b8" path="C:\Users\hailu\Desktop\File-Home\new-connector\Request-Records.txt" />
+				<logger level="INFO" doc:name="Logger" doc:id="7a639026-ab35-4aa7-b7a0-1a47a5bc7a9f" message="Logger after Read File: #[payload]" />
+				<ftp:write doc:name="Write" doc:id="a0a082d7-5c64-4cf7-bf68-c2fd728c5b69" config-ref="FTP_Config" path="Timezone1.txt" />
+				<logger level="INFO" doc:name="Logger" doc:id="bd7a25f3-5fe1-4a2d-b838-221817794438" message="Logger after FTP Write2 File: #[payload]" />
+			</route>
+			<route >
+				<s3:create-object doc:name="Create object" doc:id="eab83b04-e973-4df3-91e7-3d5591849bc6" config-ref="Amazon_S3_Configuration" bucketName="brandsbucket4" key="timezone.json"/>
+				<logger level="INFO" doc:name="Logger" doc:id="510dc57c-cf85-41e9-b889-fed5b2b51c43" message="logger after S3:#[payload]"/>
+			</route>
+		</scatter-gather>
+	</flow>
+</mule>

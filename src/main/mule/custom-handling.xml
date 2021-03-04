@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="custom-handlingFlow" doc:id="7b871b2c-5e79-4ac6-a61f-78fc6bd16dfd" >
+		<http:listener doc:name="Listener" doc:id="1afabfb9-004a-4035-b62f-db150e87a9d5" config-ref="HTTP_Listener_config2" path="/custom">
+			<http:error-response statusCode="#[vars.statusCode]" >
+				<http:body ><![CDATA[#[payload]]]></http:body>
+			</http:error-response>
+		</http:listener>
+		<choice doc:name="Choice" doc:id="a71d90b7-128c-4bc6-ba07-ee16fb7a21e2" >
+			<when expression='#[payload[0].verification == "failed" or  payload[0].verification == "passed"]'>
+				<logger level="INFO" doc:name="Logger" doc:id="d2b5094b-249b-43cd-b0b0-a381465df36f" message="Logger before set payload:#[payload]"/>
+				<set-variable value="#[payload]" doc:name="Set Variable" doc:id="08773e35-22d1-4127-bd8f-99a34399de5d" variableName="data"/>
+				<set-payload value="#['Successful']" doc:name="Set Payload" doc:id="9d6890e2-ee3f-46ab-b46f-f2d0e8d9669a" />
+				<logger level="INFO" doc:name="Logger" doc:id="7202c654-457d-410f-9092-1b8e11497372" message="Logger after set payload:#[vars.data]" />
+			</when>
+			<otherwise >
+				<raise-error doc:name="Raise error" doc:id="8b9db2c9-2610-4d64-bbab-d5980cc9b448" type="Account:INVALID_VALUE" description="The value must be either passed or failed"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="8919085f-a701-459c-ac86-bfa3b7b5c095" type="Account:INVALID_VALUE">
+				<ee:transform doc:name="Transform Message" doc:id="0053e912-94d7-4377-9792-3c61e292c631" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message": "Invalid input"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="statusCode" ><![CDATA[402]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
